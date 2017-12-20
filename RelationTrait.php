@@ -63,14 +63,23 @@ trait RelationTrait
                         foreach ($value as $relPost) {
                             if (array_filter($relPost)) {
                                 /* @var $relObj ActiveRecord */
-                                $relObj = (empty($relPost[$relPKAttr[0]])) ? new $relModelClass : $relModelClass::findOne($relPost[$relPKAttr[0]]);
+                                $relObj = isset($relPost[$relPKAttr[0]])?$relModelClass::findOne($relPost[$relPKAttr[0]]):"";
+                                if(empty($relObj)){
+                                    $relObj=new $relModelClass;
+                                }
                                 $relObj->load($relPost, '');
                                 $container[] = $relObj;
                             }
                         }
                         $this->populateRelation($relName, $container);
                     } else {
-                        $relObj = (empty($value[$relPKAttr[0]])) ? new $relModelClass : $relModelClass::findOne($value[$relPKAttr[0]]);
+                    //    $relObj = (empty($value[$relPKAttr[0]])) ? new $relModelClass : $relModelClass::findOne($value[$relPKAttr[0]]);
+                        $relObj = isset($value[$relPKAttr[0]])?$relModelClass::findOne($value[$relPKAttr[0]]):"";
+                        if(empty($relObj)){
+                            $relObj=new $relModelClass;
+                        }
+
+
                         $relObj->load($value, '');
                         $this->populateRelation($relName, $relObj);
                     }
@@ -89,13 +98,15 @@ trait RelationTrait
         $trans = $db->beginTransaction();
         $isNewRecord = $this->isNewRecord;
         try {
-            if ($this->save()) {
+            if ($this->save(false)) {
                 $error = false;
                 if (!empty($this->relatedRecords)) {
                     foreach ($this->relatedRecords as $name => $records) {
 
                         if (in_array($name, $skippedRelations))
                             continue;
+
+
 
                         if (!empty($records)) {
                             $AQ = $this->getRelation($name);
@@ -233,7 +244,7 @@ trait RelationTrait
                     }
                 }
 
-                if ($error) {
+                if ($error || !$this->save()) {
                     $trans->rollback();
                     $this->isNewRecord = $isNewRecord;
                     return false;
